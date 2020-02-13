@@ -1,0 +1,8 @@
+{
+  "properties": [
+    {
+      "name": "class-name",
+      "type": "java.lang.String",
+      "description": "Description for class-name."
+  }
+] }
