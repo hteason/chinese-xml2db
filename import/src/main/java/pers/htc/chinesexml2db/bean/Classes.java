@@ -1,18 +1,18 @@
 package pers.htc.chinesexml2db.bean;
 
 import bean.Importable;
-import handler.anno.XMLAttr;
-import handler.anno.NodeName;
+import strategy.anno.XMLAttr;
+import strategy.anno.NodeName;
 import lombok.Data;
-
-import java.util.UUID;
 
 @Data
 @NodeName("班级")
 public class Classes implements Importable {
-    String id = UUID.randomUUID().toString();
+    String id = uuid();
     @XMLAttr("年级")
     String grade;
     @XMLAttr("专业")
     String major;
+    @XMLAttr("所属学院id")
+    private String academyId;
 }

@@ -1,14 +1,9 @@
-package handler.factory;
+package strategy.factory;
 
 import constant.GlobalMap;
-import handler.AbstractImportStrategyTemplate;
-import handler.anno.Strategy;
-import org.reflections.Reflections;
-import org.springframework.beans.factory.annotation.Autowired;
+import strategy.AbstractImportStrategyTemplate;
 
 import java.util.Map;
-import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * 单例工厂

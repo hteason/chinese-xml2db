@@ -1,8 +1,8 @@
 package parser;
 
 import constant.GlobalMap;
-import handler.AbstractImportStrategyTemplate;
-import handler.factory.ImportStrategyFactory;
+import strategy.AbstractImportStrategyTemplate;
+import strategy.factory.ImportStrategyFactory;
 import org.dom4j.Attribute;
 import org.dom4j.Document;
 import org.dom4j.Element;
@@ -24,8 +24,7 @@ public class XMLParser {
      * 读取xml
      *
      * @param xmlFile xml文件流数据
-     * @return
-     * @throws Exception
+     * @return 封装到实体类后的集合
      */
     public static Map<String, Object> toBeanMap(InputStream xmlFile) throws Exception {
         SAXReader sax = new SAXReader();//创建一个SAXReader对象
@@ -57,7 +56,6 @@ public class XMLParser {
      * 遍历xml
      *
      * @param node 当前所在节点
-     * @throws Exception
      */
     private static void getNodes(Element node) throws Exception {
         ThreadLocalUtil.set("CURRENT_NODE", node);

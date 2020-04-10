@@ -1,8 +1,8 @@
 package pers.htc.chinesexml2db.handler.strategy;
 
 import bean.Importable;
-import handler.AbstractImportStrategyTemplate;
-import handler.anno.Strategy;
+import strategy.AbstractImportStrategyTemplate;
+import strategy.anno.Strategy;
 import pers.htc.chinesexml2db.bean.Student;
 
 import java.util.Map;

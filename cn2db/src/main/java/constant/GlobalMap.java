@@ -1,24 +1,26 @@
 package constant;
 
-import handler.AbstractImportStrategyTemplate;
-import handler.anno.IntValueMap;
-import handler.anno.NodeName;
-import handler.anno.Strategy;
-import handler.anno.XMLAttr;
+import strategy.AbstractImportStrategyTemplate;
+import strategy.anno.IntValueMap;
+import strategy.anno.NodeName;
+import strategy.anno.Strategy;
+import strategy.anno.XMLAttr;
 import org.reflections.Reflections;
+import org.springframework.util.StringUtils;
 import org.yaml.snakeyaml.Yaml;
 
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.lang.reflect.Field;
 import java.nio.charset.StandardCharsets;
-import java.util.*;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
 
 /**
  * 映射类，主要是XML内容和数据库的映射
  */
-//@Configuration
-//@PropertySource(value = "classpath:/import-maps.yml", encoding = "utf-8")
 public class GlobalMap {
     private GlobalMap() {
     }
@@ -49,87 +51,131 @@ public class GlobalMap {
         Yaml yaml = new Yaml();
         Map<String, Object> map = (Map<String, Object>) yaml.load(in);
         String beanPackage = (String) map.get("bean_package");
+        if (StringUtils.isEmpty(beanPackage)){
+            throw new IllegalArgumentException("必须添加bean_package属性指定实体类所在包名");
+        }
         String strategyPackage = (String) map.get("strategy_package");//策略所在包
+        if (StringUtils.isEmpty(beanPackage)){
+            throw new IllegalArgumentException("必须添加strategy_package属性指定策略类所在包名");
+        }
 
+        //通过yml配置文件配置
         initClassName(map, beanPackage);
         initStrToInt(map);
         initClassFields(map);
 
+        //将带有@NodeName注解的实体类添加目标到CLASS_NAME
         initClassNameNyAnno(beanPackage);
-        initClassFieldsByAnno(beanPackage);
-        initStrategyMapByAnno(strategyPackage);//添加策略到工厂Map
+        //通过@Strategy注解添加策略到工厂STRATEGY_MAP
+        initStrategyMapByAnno(strategyPackage);
         print();
     }
 
-
+    /**
+     * 从import-maps.yml加载元素名和实体类的映射，如：
+     * "学生"对应[bean_package+CLASS_NAME]即pers.htc.chinesexml2db.bean.Student
+     *
+     * @param map         从配置文件读取到的Map，会存储到CLASS_NAME
+     * @param beanPackage 对应目标实体类的包名
+     */
     public static void initClassName(Map<String, Object> map, String beanPackage) {
-        Map<String, String> className = (Map<String, String>) map.getOrDefault("CLASS_NAME",new HashMap<>());
+        Map<String, String> className = (Map<String, String>) map.getOrDefault("CLASS_NAME", new HashMap<>());
         for (Map.Entry<String, String> entry : className.entrySet()) {
             CLASS_NAME.put(entry.getKey(), beanPackage + "." + entry.getValue());
         }
     }
 
+    /**
+     * 从import-maps.yml加载属性值和数据库代表值的映射，如：
+     * 父亲对应1
+     *
+     * @param map 从配置文件读取到的Map，会存储到STR_TO_INT
+     */
     public static void initStrToInt(Map<String, Object> map) {
-        STR_TO_INT = (Map<String, Integer>) map.getOrDefault("STR_TO_INT",new HashMap<>());
+        STR_TO_INT = (Map<String, Integer>) map.getOrDefault("STR_TO_INT", new HashMap<>());
     }
 
+    /**
+     * 从import-maps.yml加载属性和实体类属性的映射，如：
+     * 学生下的性别对应Student类下的sex属性
+     *
+     * @param map 从配置文件读取到的Map，会存储到STR_TO_INT
+     */
     public static void initClassFields(Map<String, Object> map) {
-        CLASS_FIELDS = (Map<String, Map<String, String>>) map.getOrDefault("CLASS_FIELDS",new HashMap<>());
+        CLASS_FIELDS = (Map<String, Map<String, String>>) map.getOrDefault("CLASS_FIELDS", new HashMap<>());
     }
 
-    public static void setStrategyMap(Map<Class<?>, AbstractImportStrategyTemplate> strategyMap) {
-        STRATEGY_MAP = strategyMap;
-    }
-
-    public static void setClassFields(Map<String, Map<String, String>> classFields) {
-        CLASS_FIELDS = classFields;
-    }
-
-
-    /**************** 通过properties方式加载文件 *****************/
-    private static void initByPro(InputStreamReader in) throws IOException {
-        Properties pro = new Properties();
-        pro.load(in);
-        String beanPackage = pro.getProperty("bean_package");//xml对应实体类所在包
-        String strategyPackage = pro.getProperty("strategy_package");//策略所在包
-
-        initClassName(beanPackage, pro.getProperty("CLASS_NAME"));
-        initStrToInt(pro.getProperty("STR_TO_INT"));
-        initClassFields(pro.getProperty("CLASS_FIELDS"));
-
-        initClassNameNyAnno(beanPackage);
-        initClassFieldsByAnno(beanPackage);
-        initStrategyMapByAnno(strategyPackage);//添加策略到工厂Map
-    }
-
-    public static void initClassName(String beanPackage, String classNameStr) {
-        Yaml yaml = new Yaml();
-//        Map<String, String> className = (Map<String, String>) yaml.load(classNameStr);
-        Map<String, String> className = (Map<String, String>) yaml.loadAs(classNameStr, HashMap.class);
-        for (Map.Entry<String, String> entry : className.entrySet()) {
-            CLASS_NAME.put(entry.getKey(), beanPackage + "." + entry.getValue());
-        }
-    }
-
-    public static void initStrToInt(String strToInt) {
-        Yaml yaml = new Yaml();
-        GlobalMap.STR_TO_INT = (Map<String, Integer>) yaml.load(strToInt);
-    }
-
-    public static void initClassFields(String propertiesStr) {
-        Yaml yaml = new Yaml();
-//        CLASS_FIELDS = (Map<String, String>) yaml.load(propertiesStr);
-    }
-
+    /**
+     * 将带有@NodeName注解的实体类添加目标到CLASS_NAME
+     *
+     * @param beanPackage 目标实体类所在的包名
+     */
     public static void initClassNameNyAnno(String beanPackage) {
         Reflections reflections = new Reflections(beanPackage);
         Set<Class<?>> classesList = reflections.getTypesAnnotatedWith(NodeName.class);
         for (Class<?> clazz : classesList) {
             NodeName nodeName = clazz.getAnnotation(NodeName.class);
             CLASS_NAME.put(nodeName.value(), clazz.getName());
+            //将类下含@XMLAttr注解的属性映射加入CLASS_FIELDS
+            //将类下含@IntValueMap注解的属性映射加入STR_TO_INT
+            initClassFieldsByAnno(nodeName.value(), clazz.getDeclaredFields());
         }
     }
 
+    /**
+     * 将类下含@XMLAttr注解的属性映射加入CLASS_FIELDS
+     * 将类下含@IntValueMap注解的属性映射加入STR_TO_INT
+     *
+     * @param nodeNameStr 元素名
+     * @param fields      对应实体类下的所有属性
+     */
+    public static void initClassFieldsByAnno(String nodeNameStr, Field[] fields) {
+        //查看部分映射是否已经在yml文件完成了
+        //存在映射：在原来基础上做添加，同key的做覆盖，注解优先
+        Map<String, String> filedInClassMap = CLASS_FIELDS.getOrDefault(nodeNameStr, new HashMap<>());
+        for (Field field : fields) {
+            XMLAttr fieldAnno = field.getAnnotation(XMLAttr.class);
+            if (fieldAnno != null) {
+                String cnValue = fieldAnno.value();//对应的中文属性名
+                String fieldName = field.getName();
+                filedInClassMap.put(cnValue, fieldName);
+            }
+
+            //将类下含@IntValueMap注解的属性映射加入STR_TO_INT
+            IntValueMap intValueMap = field.getAnnotation(IntValueMap.class);
+            if (intValueMap != null) {
+                initStrToIntByAnno(intValueMap);
+            }
+        }
+        if (!filedInClassMap.isEmpty()) {
+            CLASS_FIELDS.put(nodeNameStr, filedInClassMap);
+        }
+    }
+
+    /**
+     * 将类下含@IntValueMap注解的属性映射加入STR_TO_INT
+     *
+     * @param intValueMap 映射值，字符串数组类型，如{"父亲=1","母亲=2"}，等于号分隔
+     */
+    private static void initStrToIntByAnno(IntValueMap intValueMap) {
+        String[] values = intValueMap.value();
+        for (String value : values) {
+            if (Objects.isNull(value) || "".equals(value)) {
+                continue;
+            }
+            String[] val = value.split("=");
+            if (val.length != 2) {
+                continue;
+            }
+            STR_TO_INT.put(val[0], Integer.parseInt(val[1].trim()));
+        }
+    }
+
+    /**
+     * 通过@Strategy注解添加策略到工厂STRATEGY_MAP
+     *
+     * @param strategyPackage 策略类所在包名
+     */
     public static void initStrategyMapByAnno(String strategyPackage) {
         Reflections reflections = new Reflections(strategyPackage);
         Set<Class<?>> classesList = reflections.getTypesAnnotatedWith(Strategy.class);
@@ -146,61 +192,26 @@ public class GlobalMap {
         }
     }
 
+    /**
+     * 向策略工厂{@link strategy.factory.ImportStrategyFactory}提供策略接口
+     *
+     * @return 管理策略Bean的Map
+     */
     public static Map<Class<?>, AbstractImportStrategyTemplate> getStrategyMap() {
         return STRATEGY_MAP;
     }
 
-    public static void initClassFieldsByAnno(String beanPackage) {
-        Reflections reflections = new Reflections(beanPackage);
-        Set<Class<?>> classSet = reflections.getTypesAnnotatedWith(NodeName.class);
-
-        for (Class<?> clazz : classSet) {
-            Field[] fields = clazz.getDeclaredFields();
-            NodeName nodeName = clazz.getAnnotation(NodeName.class);
-            String nodeNameStr = nodeName.value();
-            //查看部分映射是否已经在yml文件完成了
-            //存在部分：在原来基础上做添加
-            Map<String, String> filedInClassMap = CLASS_FIELDS.getOrDefault(nodeNameStr,new HashMap<>());
-            for (Field field : fields) {
-                XMLAttr fieldAnno = field.getAnnotation(XMLAttr.class);
-                if (fieldAnno != null) {
-                    String cnValue = fieldAnno.value();//对应的中文属性名
-                    String fieldName = field.getName();
-                    filedInClassMap.put(cnValue, fieldName);
-                }
-
-                IntValueMap intValueMap = field.getAnnotation(IntValueMap.class);
-                if (intValueMap != null) {
-                    initStrToIntByAnno(intValueMap);
-                }
-            }
-            if (!filedInClassMap.isEmpty()) {
-                CLASS_FIELDS.put(nodeNameStr, filedInClassMap);
-            }
-        }
-    }
-
-    private static void initStrToIntByAnno(IntValueMap intValueMap) {
-        String[] values = intValueMap.value();
-        for (String value : values) {
-            if (Objects.isNull(value) || "".equals(value)) {
-                continue;
-            }
-            String[] val = value.split("=");
-            if (val.length != 2) {
-                continue;
-            }
-            STR_TO_INT.put(val[0], Integer.parseInt(val[1].trim()));
-        }
-    }
-
-
-
-
-    private static void print(){
+    /**
+     * 打印所需的初始化映射对象
+     */
+    private static void print() {
+        System.out.println("--------------xml元素名和类名的映射--------------");
         System.out.println(GlobalMap.CLASS_NAME);
+        System.out.println("--------------xml属性和类属性的映射--------------");
         System.out.println(GlobalMap.CLASS_FIELDS);
+        System.out.println("--------------xml属性值和数据库字段代表值的映射--------------");
         System.out.println(GlobalMap.STR_TO_INT);
+        System.out.println("--------------xml元素名和相应处理策略类的映射--------------");
         System.out.println(GlobalMap.STRATEGY_MAP);
     }
 }

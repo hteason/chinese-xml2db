@@ -1,9 +1,9 @@
-package handler;
+package strategy;
 
 import bean.Importable;
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
-import handler.anno.Strategy;
+import strategy.anno.Strategy;
 import org.dom4j.Element;
 import util.ThreadLocalUtil;
 

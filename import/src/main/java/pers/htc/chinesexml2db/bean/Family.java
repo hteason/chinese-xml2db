@@ -1,9 +1,9 @@
 package pers.htc.chinesexml2db.bean;
 
 import bean.Importable;
-import handler.anno.IntValueMap;
-import handler.anno.NodeName;
-import handler.anno.XMLAttr;
+import strategy.anno.IntValueMap;
+import strategy.anno.NodeName;
+import strategy.anno.XMLAttr;
 import lombok.Data;
 
 import java.util.UUID;
@@ -11,7 +11,7 @@ import java.util.UUID;
 @Data
 @NodeName("家庭成员")
 public class Family implements Importable {
-    private String id = UUID.randomUUID().toString();
+    private String id = uuid();
     @XMLAttr("学生ID")
     private String studentId;
     @XMLAttr("关系")

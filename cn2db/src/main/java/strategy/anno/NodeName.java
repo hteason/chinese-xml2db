@@ -1,4 +1,4 @@
-package handler.anno;
+package strategy.anno;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;

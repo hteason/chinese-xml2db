@@ -1,8 +1,8 @@
 package pers.htc.chinesexml2db.handler.strategy;
 
 import bean.Importable;
-import handler.AbstractImportStrategyTemplate;
-import handler.anno.Strategy;
+import strategy.AbstractImportStrategyTemplate;
+import strategy.anno.Strategy;
 import pers.htc.chinesexml2db.bean.Classes;
 
 import java.util.Map;
@@ -17,5 +17,6 @@ public class ClassStrategy extends AbstractImportStrategyTemplate {
 //        classList.add(classes);
 //        dataMap.put(KEY,classList);
 //        return classes.getId();
+        ((Classes) importable).setAcademyId(getParentId());
     }
 }
